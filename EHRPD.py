@@ -174,17 +174,6 @@ class HitaNet_time_diff(nn.Module):
         return eta
 
     def forward(self, input_seqs, masks, lengths, seq_time_step, code_masks, code_timegaps, visit_timegaps):
-        # seq_time_step = seq_time_step.unsqueeze(2) / 180
-        # time_feature = 1 - self.tanh(torch.pow(self.selection_layer(seq_time_step), 2))
-        # # time_feature_cache = time_feature
-        # time_feature = self.time_layer(time_feature)
-        # x = self.embbedding(input_seqs).sum(dim=2) + self.bias_embedding
-        # x = self.emb_dropout(x)
-        # bs, seq_length, d_model = x.size()
-        # output_pos, ind_pos = self.pos_emb(lengths)
-        # x += output_pos
-        # x += time_feature
-
 
         x = self.modeling_time_vs_code(input_seqs, masks, lengths, seq_time_step, code_masks, code_timegaps, visit_timegaps).sum(dim=-2)
         x = self.emb_dropout(x)
@@ -238,7 +227,7 @@ class timegap_predictor(nn.Module):
 class EHRPD(nn.Module):
     def __init__(self, vocab_size, d_model, dropout, dropout_emb, num_layers, demo_len, device, num_heads  = 4, channel_list = [256,512,1024], num_resnet_blocks = 2):
         super().__init__()
-        self.name = 'MedDiffGa'
+        self.name = 'EHRPD'
         self.device = device
         self.demo_len = demo_len
         self.demoMLP = nn.Sequential(nn.Linear(self.demo_len, 64), nn.ReLU(), nn.Linear(64, d_model))
@@ -246,7 +235,6 @@ class EHRPD(nn.Module):
         self.drug_embedding = nn.Embedding(vocab_size[1]+1, d_model, padding_idx=-1)
         self.lab_embedding = nn.Embedding(vocab_size[2]+1, d_model, padding_idx=-1)
         self.proc_embedding = nn.Embedding(vocab_size[3]+1, d_model, padding_idx=-1)
-        # self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=-1)
         self.diag_ff = nn.Linear(d_model, d_model)
         self.drug_ff = nn.Linear(d_model, d_model)
         self.lab_ff = nn.Linear(d_model, d_model)
