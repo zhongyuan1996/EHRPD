@@ -14,6 +14,10 @@ For more details about the methodology and experimental results, please refer to
 
 ## Usage
 
+### Creating the data
+
+To process the data, utilize `dataPreprocess.py` on the [MIMIC-III Clinical Database](https://physionet.org/content/mimiciii/1.4/).
+
 ### Training the Model
 To train the EHRPD (MedDiffGA) model, run:
 ```sh
