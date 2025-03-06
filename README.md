@@ -26,7 +26,7 @@ python train.py
 
 ## Citation
 If you find this repository useful for your research, please cite our paper:
-
+```sh
 @inproceedings{zhong2024synthesizing,
   title={Synthesizing multimodal electronic health records via predictive diffusion models},
   author={Zhong, Yuan and Wang, Xiaochen and Wang, Jiaqi and Zhang, Xiaokun and Wang, Yaqing and Huai, Mengdi and Xiao, Cao and Ma, Fenglong},
@@ -34,3 +34,4 @@ If you find this repository useful for your research, please cite our paper:
   pages={4607--4618},
   year={2024}
 }
+```
