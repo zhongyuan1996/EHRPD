@@ -598,19 +598,17 @@ if __name__ == '__main__':
                 for focal_gamma in focal_gammas:
                     for name, dir in zip(names, save_dirs):
                         for data in datas:
-                            for p in num_prompts:
-                                main(
-                                    seed=seed,
-                                    name=name,
-                                    data=data,
-                                    max_len=max_len,
-                                    max_num=max_num,
-                                    save_dir=dir+ 'max_len_'+str(max_len)+'_max_num_'+str(max_num)+'/'+'focal_alpha_'+str(focal_alpha)+'_focal_gamma_'+str(focal_gamma)+'/',
-                                    mode=mode,
-                                    focal_alpha=focal_alpha,
-                                    focal_gamma=focal_gamma,
-                                    short_ICD=short_ICD,
-                                    subset=subset,
-                                    num_prompt=p
-                                )
+                            main(
+                                seed=seed,
+                                name=name,
+                                data=data,
+                                max_len=max_len,
+                                max_num=max_num,
+                                save_dir=dir+ 'max_len_'+str(max_len)+'_max_num_'+str(max_num)+'/'+'focal_alpha_'+str(focal_alpha)+'_focal_gamma_'+str(focal_gamma)+'/',
+                                mode=mode,
+                                focal_alpha=focal_alpha,
+                                focal_gamma=focal_gamma,
+                                short_ICD=short_ICD,
+                                subset=subset
+                            )
 
