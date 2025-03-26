@@ -254,7 +254,127 @@ def Presence_Disclosure(model, real_seq, synthetic_seq, modality, seq_length, pe
     sensitivity = success_count / total_count if total_count > 0 else 0
     return sensitivity
 
+def gen(args):
+    saving_path = './data/synthetic/'
+    print(args)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available() and args.cuda:
+        torch.cuda.manual_seed(args.seed)
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    files = os.listdir(str(args.save_dir))
+    csv_filename = str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '.csv'
+    checkpoint_filepath = os.path.join(args.save_dir, str(args.model) + '_' + str(args.target_disease) + '_' + str(args.seed) + '_' + str(args.focal_alpha) + '_' + str(args.focal_gamma) + '.pt')
 
+    if args.target_disease == 'mimic' and args.short_ICD:
+        diag2id = pd.read_csv('./data/mimic/diagnosis_to_int_mapping_3dig.csv', header=None)
+        drug2id = pd.read_csv('./data/mimic/drug_to_int_mapping_3dig.csv', header=None)
+        lab2id = pd.read_csv('./data/mimic/lab_to_int_mapping_3dig.csv', header=None)
+        proc2id = pd.read_csv('./data/mimic/proc_to_int_mapping_3dig.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 76
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        drug_nan_id = 146
+        lab_nan_id = 206
+        proc_nan_id = 24
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_pad_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/mimic/'
+    elif args.target_disease == 'breast':
+        diag2id = pd.read_csv('./data/breast/ae_to_int_mapping.csv', header=None)
+        drug2id = pd.read_csv('./data/breast/drug_to_int_mapping.csv', header=None)
+        lab2id = pd.read_csv('./data/breast/lab_to_int_mapping.csv', header=None)
+        proc2id = pd.read_csv('./data/breast/proc_to_int_mapping.csv', header=None)
+        id2diag = dict(zip(diag2id[1], diag2id[0]))
+        id2drug = dict(zip(drug2id[1], drug2id[0]))
+        id2lab = dict(zip(lab2id[1], lab2id[0]))
+        id2proc = dict(zip(proc2id[1], proc2id[0]))
+        demo_len = 10
+        diag_pad_id = len(diag2id)
+        drug_pad_id = len(drug2id)
+        lab_pad_id = len(lab2id)
+        proc_pad_id = len(proc2id)
+        diag_nan_id =  51
+        drug_nan_id = 101
+        lab_nan_id = 10
+        proc_nan_id = 4
+        pad_id_list = [diag_pad_id, drug_pad_id, lab_pad_id, proc_pad_id]
+        nan_id_list = [diag_nan_id, drug_nan_id, lab_nan_id, proc_nan_id]
+        data_path = './data/breast/'
+    else:
+        raise ValueError('Invalid disease')
+    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+
+
+
+    train_dataset = pancreas_Gendataset(data_path + 'train_3dig' + str(args.target_disease) + '.csv',
+                                           args.max_len,
+                                           args.max_num_codes, pad_id_list, nan_id_list, device)
+    train_dataloader = DataLoader(train_dataset, args.batch_size, shuffle=False, collate_fn=gen_collate_fn)
+
+    model, _ = torch.load(checkpoint_filepath)
+    model.eval()
+
+    diag_pd_list, drug_pd_list, lab_pd_list, proc_pd_list = [], [], [], []
+    diag_ad_list, drug_ad_list, lab_ad_list, proc_ad_list = [], [], [], []
+    diag_data, drug_data, lab_data, proc_data, timegap = [], [], [], [], []
+    labels = []
+    demographic = []
+
+    for i, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc="Generating"):
+        diag_seq, drug_seq, lab_seq, proc_seq, time_step, visit_timegaps, diag_timegaps, drug_timegaps, lab_timegaps, proc_timegaps, \
+            diag_mask, drug_mask, lab_mask, proc_mask, diag_length, drug_length, lab_length, proc_length, demo, label = data
+        diag_logits, drug_logits, lab_logits, proc_logits, Delta_ts, added_z, learned_z = model(diag_seq, drug_seq,
+                                                                                                lab_seq, proc_seq,
+                                                                                                time_step,
+                                                                                                visit_timegaps,
+                                                                                                diag_timegaps,
+                                                                                                drug_timegaps,
+                                                                                                lab_timegaps,
+                                                                                                proc_timegaps, \
+                                                                                                diag_mask, drug_mask,
+                                                                                                lab_mask, proc_mask,
+                                                                                                diag_length,
+                                                                                                drug_length, lab_length,
+                                                                                                proc_length, demo)
+
+
+
+        k = 20
+        _, topk_diag_indices = torch.topk(diag_logits, min(k,diag_logits.shape[-1]), dim=-1)
+        _, topk_drug_indices = torch.topk(drug_logits,  min(k,drug_logits.shape[-1]), dim=-1)
+        _, topk_lab_indices = torch.topk(lab_logits,  min(k,lab_logits.shape[-1]), dim=-1)
+        _, topk_proc_indices = torch.topk(proc_logits,  min(k,proc_logits.shape[-1]), dim=-1)
+
+        diag_data.extend(topk_diag_indices.tolist())
+        drug_data.extend(topk_drug_indices.tolist())
+        lab_data.extend(topk_lab_indices.tolist())
+        proc_data.extend(topk_proc_indices.tolist())
+        labels.extend(label.tolist())
+        timegap.extend(Delta_ts.tolist())
+        demographic.extend(demo.tolist())
+
+    patients_df = pd.DataFrame({
+        'DIAGNOSES_int': diag_data,
+        'DRG_CODE_int': drug_data,
+        'LAB_ITEM_int': lab_data,
+        'PROC_ITEM_int': proc_data,
+        'time_gaps': timegap,
+        'MORTALITY': labels,
+        'demo': demographic
+    })
+
+
+    patients_df.to_csv(data_path + str(args.model) + '_synthetic_5dig' + str(args.target_disease) + '.csv', index=False)
+    return
 
 def train(args):
     print(args)
