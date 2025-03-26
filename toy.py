@@ -265,12 +265,6 @@ class MedDiffGa(nn.Module):
 
         transformer_output = self.modality_transformer(transformer_input)
 
-        individual_z = transformer_output[:, self.num_prompts:, :]  # (B*S, 4, D)
-        individual_z = transformer_output[:, self.num_prompts:, :].max(dim=1).values.view(batch_size, seq_len, self.d_model)  # (B, S, D)
-
-
-        shared_z = transformer_output[:, :self.num_prompts, :]  # (B*S, num_prompts, D)
-        shared_z = shared_z.view(batch_size * seq_len, self.num_prompts, self.d_model)  # (B, S, num_prompts, D)
 
 
 
@@ -298,7 +292,7 @@ class MedDiffGa(nn.Module):
 
 
         H = torch.stack((h,De, Delta_ts_emb), dim=-2)
-        H = torch.concat((H, shared_z), dim=-2)
+
 
 
 
